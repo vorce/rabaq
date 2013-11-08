@@ -12,6 +12,7 @@ defmodule Rabaq.Consumer do
   end
 
   def init([connection, sub, out_pid, instance]) do
+    :erlang.process_flag(:trap_exit, true)
     {channel, ctag} = create_channel(connection, sub)
     state = ConsumerState.new.channel(channel).ctag(ctag).out_pid(out_pid)
     IO.puts("Starting consumer #{instance} with tag: #{ctag}")
@@ -21,6 +22,11 @@ defmodule Rabaq.Consumer do
   def init(_args) do
     {:stop, _args}
   end
+
+  # not sure what to do on timeout...just stop?
+  #def handle_info({:timeout}, _state) do
+  # {:stop, :timeout, _state}
+  #end
 
   def handle_info({:"basic.consume_ok", _ctag}, state) do
     IO.puts "Basic consume OK"
@@ -46,6 +52,18 @@ defmodule Rabaq.Consumer do
     IO.puts "Stopping. Unknown message received:"
     IO.inspect info
     {:stop, info, state}
+  end
+
+  def terminate(reason, state) do
+    IO.puts "Terminating consumer. Reason: #{reason}"
+    close(state.channel, state.ctag)
+    :ok
+  end
+
+  def close(channel, ctag) do
+    :"basic.cancel_ok" = :amqp_channel.call(
+      channel, :"basic.cancel".new.consumer_tag(ctag))
+    :ok = :amqp_channel.close(channel)
   end
 
   def create_channel(connection, sub) do

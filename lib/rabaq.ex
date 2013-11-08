@@ -18,10 +18,25 @@ defmodule Rabaq do
     {:ok, spid} = Rabaq.Supervisor.start_link
     {:ok, opid} = :supervisor.start_child(spid,
       Supervisor.Behaviour.worker(Rabaq.Outputter, []))
-    Enum.map(1..state.nconsumers,
-              &consumer(state.server.connection, sub, opid, &1)) |>
-      Enum.map(&:supervisor.start_child(spid, &1))
-    {:ok, spid}
+
+    create_consumers(state.nconsumers, state.server.connection, sub, opid)
+      |> start_consumers(spid) 
+
+    {:ok, spid, state}
+  end
+
+  def stop(_state) do
+    :ok = :amqp_connection.close(state.server.connection)
+    :ok
+  end
+
+  def create_consumers(amount, connection, sub, opid) do
+    Enum.map(1..amount,
+      &consumer(connection, sub, opid, &1))
+  end
+
+  def start_consumers(consumers, spid) do
+    Enum.map(consumers, &:supervisor.start_child(spid, &1)) 
   end
 
   def consumer(connection, sub, opid, instance) do

@@ -12,6 +12,7 @@ defmodule Rabaq.Outputter do
   end
 
   def init([]) do
+    :erlang.process_flag(:trap_exit, true)
     {:ok, OutputterState.new}
   end
 
@@ -20,6 +21,12 @@ defmodule Rabaq.Outputter do
     state = handle_file(state)
     result = write_to_file(state.file, ctag <> " | " <> payload <> "\n")
     {:reply, result, state}
+  end
+
+  def terminate(reason, state) do
+    IO.puts "Terminating outputter. Reason: #{reason}"
+    File.close(state.file)
+    :ok
   end
 
   def handle_file(state) do

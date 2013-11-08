@@ -16,6 +16,7 @@ defmodule Amqp do
 	defrecord :"basic.consume", Record.extract( :"basic.consume", from: "deps/rabbit_common/include/rabbit_framing.hrl")
 	defrecord :"basic.consume_ok", Record.extract( :"basic.consume_ok", from: "deps/rabbit_common/include/rabbit_framing.hrl")
 	defrecord :"basic.ack", Record.extract( :"basic.ack", from: "deps/rabbit_common/include/rabbit_framing.hrl" )
+    defrecord :"basic.cancel", Record.extract(:"basic.cancel", from: "deps/rabbit_common/include/rabbit_framing.hrl" )
 
 	# Connect to an AMQP server via URL
 	defrecord Server, uri: nil, connection: nil do
@@ -25,8 +26,7 @@ defmodule Amqp do
 			{ :ok, params } = String.to_char_list!(uri) |> :amqp_uri.parse
 			{ :ok, connection } = :amqp_connection.start params
 			server = server.connection(connection)
-			#{ :ok, channel } = :amqp_connection.open_channel connection
-			server.uri(uri) #channel(channel).uri(uri)
+			server.uri(uri)
 		end
 	
 		# Send a message to an exchange, exchange, key, and message are binaries ""

@@ -29,21 +29,20 @@ defmodule Rabaq.Consumer do
   #end
 
   def handle_info({:"basic.consume_ok", _ctag}, state) do
-    IO.puts "Basic consume OK"
     {:noreply, state}
   end
 
-  def handle_info({{:"basic.deliver", ctag, mtag, _, _, from}, {:amqp_msg, _, content}}, state) do
-    IO.puts "Delivery from #{from}. Payload: '#{content}'"
+  def handle_info({{:"basic.deliver", _ctag, mtag, _, _, _from},
+                  {:amqp_msg, _, content}}, state) do
+    #IO.puts "Delivery from #{from}. Payload: '#{content}'"
     result = out(state, mtag, content)
 
     cond do
       result == :ok ->
         ack(state.channel, mtag)
       true ->
-        IO.puts "Yeaaaah. This is not good. Outputter failed"
-        :ok
-        # TODO nack here!
+        IO.puts "Yeaaaah. This is not good. Outputter failed, nacking msg"
+        nack(state.channel, mtag)
     end
     {:noreply, state.msg_count(state.msg_count + 1)}
   end
@@ -85,5 +84,10 @@ defmodule Rabaq.Consumer do
   def ack(channel, mtag) do
     :amqp_channel.cast(channel,
       :"basic.ack".new.delivery_tag(mtag))
+  end
+
+  def nack(channel, mtag) do
+    :amqp_channel.cast(channel,
+      :"basic.nack".new.delivery_tag(mtag))
   end
 end

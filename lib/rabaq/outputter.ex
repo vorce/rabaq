@@ -7,13 +7,13 @@ defmodule Rabaq.Outputter do
     max: 10000,
     file: nil
 
-  def start_link do
-    :gen_server.start_link(__MODULE__, [], [])
+  def start_link(args) do
+    :gen_server.start_link(__MODULE__, args, [])
   end
 
-  def init([]) do
+  def init([max, outdir]) do
     :erlang.process_flag(:trap_exit, true)
-    {:ok, OutputterState.new}
+    {:ok, OutputterState.new.max(max).outdir(outdir)}
   end
 
   def handle_call({:amqp_msg, [ctag, _mtag], payload}, _from, state) do

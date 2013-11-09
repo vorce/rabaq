@@ -17,6 +17,8 @@ defmodule Rabaq.Mixfile do
   # { :foobar, "~> 0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
     [{:amqp_client, "3.0.1", git: "git://github.com/jbrisbin/amqp_client.git"},
-    {:exconfig, "0.0.1", git: "https://github.com/yrashk/exconfig.git"}]
+    {:exconfig, "0.0.1", git: "https://github.com/yrashk/exconfig.git"},
+    #{:amrita, "~>0.2", github: "josephwilk/amrita"}
+    ]
   end
 end

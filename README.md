@@ -52,8 +52,6 @@ Some design goals:
 - Logging
 - Prefetch
 - Option to compress files after the max number of messages
-    has been written to them.
-- Write unit tests and refactor for testability if needed
-    (yes as a big proponent of TDD i'm sorry to say this was all
-    mostly hacked up in a friday evening without any TDD at all.. gg)
+    has been written to them. (Using snappy would be cool)
+- Write some integration tests (requiring a rabbitmq broker)
 - Test for robustness: Quit rabbitmqserver, simulate disk error etc

@@ -49,8 +49,12 @@ Some design goals:
 
 ## TODO
 
+- Maybe have a Server worker which handles the connection to
+    the rabbit broker and which all other workers rely on.
+    Then the supervisor could restart this to try and reconnect
+    on network failures. See http://www.rabbitmq.com/reliability.html
 - Logging
-- Prefetch
+- Prefetch (unsure if really wanted to change from 1...)
 - Option to compress files after the max number of messages
     has been written to them. (Using snappy would be cool)
 - Write some integration tests (requiring a rabbitmq broker)

@@ -45,7 +45,7 @@ defmodule Rabaq.Outputter do
 
   def get_filename() do
     {{y,m,d}, {h,min,s}} = :calendar.local_time
-    "rabaq_#{y}-#{m}-#{d}_#{h}.#{min}.#{s}.msg"
+    "rabaq_#{y}-#{m}-#{d}_#{h}.#{min}.#{s}.rbq"
   end
 
   def write_to_file(filepid, payload) do

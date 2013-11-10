@@ -4,7 +4,7 @@ defmodule Rabaq.Outputter do
   defrecord OutputterState,
     outdir: Path.expand("."),
     count: 0,
-    max: 10000,
+    max: 10_000,
     file: nil
 
   def start_link(args) do
@@ -16,10 +16,10 @@ defmodule Rabaq.Outputter do
     {:ok, OutputterState.new.max(max).outdir(outdir)}
   end
 
-  def handle_call({:amqp_msg, [ctag, _mtag], payload}, _from, state) do
+  def handle_call({:amqp_msg, [_ctag, _mtag], payload}, _from, state) do
     state = state.count(state.count + 1)
     state = handle_file(state)
-    result = write_to_file(state.file, ctag <> " | " <> payload <> "\n")
+    result = write_to_file(state.file, payload <> "\n")
     {:reply, result, state}
   end
 
@@ -34,7 +34,7 @@ defmodule Rabaq.Outputter do
       state.file == nil ->
         Path.join(state.outdir, get_filename()) |>
           File.open!(mode) |> state.file
-      state.count > state.max ->
+      state.count >= state.max ->
         File.close(state.file)
         Path.join(state.outdir, get_filename()) |>
           File.open!(mode) |> state.count(0).file

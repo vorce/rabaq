@@ -20,20 +20,13 @@ defmodule Amqp do
   defrecord :"basic.cancel", Record.extract(:"basic.cancel", from: "deps/rabbit_common/include/rabbit_framing.hrl" )
   defrecord :"basic.nack", Record.extract( :"basic.ack", from: "deps/rabbit_common/include/rabbit_framing.hrl" )
 
-  # Connect to an AMQP server via URL
-  defrecord Server, uri: nil, connection: nil do
-    def connect(uri, server) when is_binary(uri) do
-      { :ok, params } = String.to_char_list!(uri) |> :amqp_uri.parse
-      { :ok, connection } = :amqp_connection.start params
-      server = server.connection(connection)
-      server.uri(uri)
-    end
-  
-    # Send a message to an exchange, exchange, key, and message are binaries ""
-    def send(exchange, key, message, server) do
-      publish = :'basic.publish'.new exchange: exchange, routing_key: key
-      msg = :amqp_msg.new payload: message
-      :amqp_channel.cast server.channel, publish, msg
-    end
+  defrecord Server, uri: nil, connection: nil, params: nil
+
+  def parse_uri(uri) when is_binary(uri) do
+      String.to_char_list!(uri) |> :amqp_uri.parse
+  end
+
+  def connect(params) do
+      :amqp_connection.start params
   end
 end

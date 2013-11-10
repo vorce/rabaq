@@ -2,17 +2,29 @@ defmodule Rabaq do
   use Application.Behaviour
   
   defrecord RabaqState,
-    nconsumers: 2,
+    nconsumers: 4,
     server: nil,
-    queue: ""
+    queue: "",
+    retry_time: 10
 
   def start(_type, _args) do
     config_file = "rabaq.config.exs"
     config = Rabaq.Config.file! config_file
 
-    state = connection(config.uri) |>
-      RabaqState.new.queue(config.queue)
-        .nconsumers(config.consumer_count).server
+    server = check_uri(config.uri)
+      |> Amqp.Server.new.uri(config.uri).params
+
+    state = RabaqState.new.queue(config.queue).server(server)
+      .retry_time(config.retry_timeout).nconsumers(config.consumer_count)
+    state = case Amqp.connect(state.server.params) do
+      {:ok, c} ->
+        Process.monitor(c)
+        c
+      reason ->
+        IO.inspect reason
+        raise "Unable to connect to: '#{state.server.uri}'"
+    end |> state.server.connection |> state.server
+
     sub = subscription(state.queue)
     
     {:ok, spid} = Rabaq.Supervisor.start_link
@@ -31,6 +43,34 @@ defmodule Rabaq do
     :ok
   end
 
+  def handle_info({"DOWN", _cref, _process, _con, _reason}, state) do
+    retry_connection(state.retry_time * 1000, state)
+  end
+
+  def retry_connection(timeout, state) do
+    :timer.sleep(timeout)
+    case Amqp.connect(state.server.params) do
+      {:ok, c} ->
+        Process.monitor(c)
+        {:noreply, state.server.connection(c)}
+      reason ->
+        IO.puts "Error connecting to #{state.server.uri}:"
+        IO.inspect reason
+        IO.puts "Will try again in #{state.retry_time} seconds"
+        retry_connection(timeout, state)
+    end
+  end
+
+  def check_uri(uri) when is_binary(uri) do
+    case Amqp.parse_uri(uri) do
+      {:ok, p} ->
+        p
+      reason ->
+        IO.inspect reason
+        raise "Unable to parse uri '#{uri}'"
+    end
+  end
+
   def create_consumers(amount, connection, sub, opid) do
     Enum.map(1..amount,
       &consumer(connection, sub, opid, &1))
@@ -43,10 +83,6 @@ defmodule Rabaq do
   def consumer(connection, sub, opid, instance) do
     Supervisor.Behaviour.worker(Rabaq.Consumer,
       [[connection, sub, opid, instance]], [id: instance])
-  end
-
-  def connection(uri) do
-    Amqp.Server.new.connect(uri)
   end
 
   def subscription(queue) do

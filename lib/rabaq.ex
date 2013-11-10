@@ -32,8 +32,7 @@ defmodule Rabaq do
       Supervisor.Behaviour.worker(Rabaq.Outputter,
         [[config.messages_per_file, config.out_directory]]))
 
-    create_consumers(state.nconsumers, state.server.connection, sub, opid)
-      |> start_consumers(spid) 
+    Enum.each create_consumers(state.nconsumers, state.server.connection, sub, opid), &start_consumer(&1, spid)
 
     {:ok, spid, state}
   end
@@ -76,8 +75,8 @@ defmodule Rabaq do
       &consumer(connection, sub, opid, &1))
   end
 
-  def start_consumers(consumers, spid) do
-    Enum.map(consumers, &:supervisor.start_child(spid, &1)) 
+  def start_consumer(consumer, spid) do
+    :supervisor.start_child(spid, consumer)
   end
 
   def consumer(connection, sub, opid, instance) do

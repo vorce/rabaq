@@ -23,8 +23,7 @@ defmodule Rabaq.Outputter do
     {:reply, result, state}
   end
 
-  def terminate(reason, state) do
-    IO.puts "Terminating outputter. Reason: #{reason}"
+  def terminate(_reason, state) do
     File.close(state.file)
     :ok
   end

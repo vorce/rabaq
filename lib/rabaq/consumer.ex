@@ -23,11 +23,6 @@ defmodule Rabaq.Consumer do
     {:stop, _args}
   end
 
-  # not sure what to do on timeout...just stop?
-  #def handle_info({:timeout}, _state) do
-  # {:stop, :timeout, _state}
-  #end
-
   def handle_info({:"basic.consume_ok", _ctag}, state) do
     {:noreply, state}
   end
@@ -47,9 +42,15 @@ defmodule Rabaq.Consumer do
     {:noreply, state.msg_count(state.msg_count + 1)}
   end
 
+  def handle_info({:"basic.cancel", _, _} = reason, state) do
+    close(state.channel, state.ctag)
+    {:stop, reason, state}
+  end
+
   def handle_info(info, state) do
     IO.puts "Stopping. Unknown message received:"
     IO.inspect info
+    close(state.channel, state.ctag)
     {:stop, info, state}
   end
 

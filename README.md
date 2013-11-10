@@ -54,4 +54,5 @@ Some design goals:
 - Option to compress files after the max number of messages
     has been written to them. (Using snappy would be cool)
 - Write some integration tests (requiring a rabbitmq broker)
-- Test for robustness: Quit rabbitmqserver, simulate disk error etc
+- Test for robustness: Quit rabbitmqserver, simulate disk error etc,
+    also make sure workers can restart properly

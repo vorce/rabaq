@@ -27,13 +27,9 @@ defmodule Rabaq do
 
     sub = subscription(state.queue)
     
-    {:ok, spid} = Rabaq.Supervisor.start_link
-    {:ok, opid} = :supervisor.start_child(spid,
-      Supervisor.Behaviour.worker(Rabaq.Outputter,
-        [[config.messages_per_file, config.out_directory]]))
-
-    Enum.each create_consumers(state.nconsumers, state.server.connection, sub, opid), &start_consumer(&1, spid)
-
+    {:ok, spid} = Rabaq.Supersup.start_link([config.messages_per_file,
+      config.out_directory, state.nconsumers,
+        [state.server.connection, sub]])
     {:ok, spid, state}
   end
 
@@ -68,20 +64,6 @@ defmodule Rabaq do
         IO.inspect reason
         raise "Unable to parse uri '#{uri}'"
     end
-  end
-
-  def create_consumers(amount, connection, sub, opid) do
-    Enum.map(1..amount,
-      &consumer(connection, sub, opid, &1))
-  end
-
-  def start_consumer(consumer, spid) do
-    :supervisor.start_child(spid, consumer)
-  end
-
-  def consumer(connection, sub, opid, instance) do
-    Supervisor.Behaviour.worker(Rabaq.Consumer,
-      [[connection, sub, opid, instance]], [id: instance])
   end
 
   def subscription(queue) do

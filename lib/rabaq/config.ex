@@ -6,6 +6,5 @@ defmodule Rabaq.Config do
   defproperty messages_per_file, default: 10000
   defproperty out_directory, default: Path.expand(".")
   defproperty retry_timeout, default: 10
-  #defproperty prefetch_count, default: 100
   #defproperty compress_files, default: true
 end

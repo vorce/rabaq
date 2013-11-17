@@ -66,7 +66,7 @@ defmodule Rabaq.Outputter do
     :ok
   end
 
-  def out_file(state, payload) do
+  def out_file(state, _payload) do
     mode = [:append, :utf8]
     filename = get_filename(state.file_count)
     {filename, ConCache.get_or_store(state.cache, filename, fn() ->

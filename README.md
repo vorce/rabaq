@@ -49,7 +49,6 @@ Some design goals:
 
 ## TODO
 
-- Move all amqp code to the Amqp module
 - Logging
 - Prefetch (unsure if really wanted to change from 1...)
 - Option to compress files after the max number of messages

@@ -29,4 +29,26 @@ defmodule Amqp do
   def connect(params) do
       :amqp_connection.start params
   end
+
+  def close_channel(channel, ctag) do
+    :"basic.cancel_ok" = :amqp_channel.call(
+      channel, :"basic.cancel".new.consumer_tag(ctag))
+    :ok = :amqp_channel.close(channel)
+  end
+
+  def create_channel(connection, sub) do
+    { :ok, channel } = :amqp_connection.open_channel connection
+    {:"basic.consume_ok", ctag} = :amqp_channel.subscribe(channel, sub, self)
+    {channel, ctag}
+  end
+
+  def ack(channel, mtag) do
+    :amqp_channel.cast(channel,
+      :"basic.ack".new.delivery_tag(mtag))
+  end
+
+  def nack(channel, mtag) do
+    :amqp_channel.cast(channel,
+      :"basic.nack".new.delivery_tag(mtag))
+  end
 end

@@ -55,7 +55,7 @@ defmodule Rabaq.Consumer do
   end
 
   def terminate(reason, state) do
-    IO.puts "Terminating consumer. Reason: #{reason}"
+    IO.puts "Terminating consumer"
     close(state.channel, state.ctag)
     :ok
   end

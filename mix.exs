@@ -18,7 +18,7 @@ defmodule Rabaq.Mixfile do
   defp deps do
     [{:amqp_client, "3.0.1", git: "git://github.com/jbrisbin/amqp_client.git"},
     {:exconfig, "0.0.1", git: "https://github.com/yrashk/exconfig.git"},
-    {:con_cache, "0.0.1", [github: "sasa1977/con_cache"]}
+    {:con_cache, "0.0.1", [github: "vorce/con_cache"]}
     ]
   end
 end

@@ -1,5 +1,9 @@
 # Rabaq
 
+**No longer builds! Must refactor to use the Elixir amqp client and
+fix deprecated Elixir constructs (this project was originally written
+with Elixir 0.11.0!)**
+
 **Work-in-progress.**
 
 ## Introduction

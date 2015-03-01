@@ -1,21 +1,17 @@
 defmodule Rabaq do
   use Application.Behaviour
   
-  defrecord RabaqState,
-    nconsumers: 4,
-    server: nil,
-    queue: "",
-    retry_time: 10
-
   def start(_type, _args) do
-    config_file = "rabaq.config.exs"
-    config = Rabaq.Config.file! config_file
+    #config_file = "rabaq.config.exs"
+    config = Mix.Project.config |> Keyword.fetch!(:rabaq)
+    #Rabaq.Config.file! config_file
 
     server = check_uri(config.uri)
       |> Amqp.Server.new.uri(config.uri).params
 
-    state = RabaqState.new.queue(config.queue).server(server)
-      .retry_time(config.retry_timeout).nconsumers(config.consumer_count)
+    state = %RabaqState{queue: config.queue, server: server,
+              retry_time: config.retry_timeout,
+              nconsumers: config.consumer_count}
     state = case Amqp.connect(state.server.params) do
       {:ok, c} ->
         Process.monitor(c)

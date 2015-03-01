@@ -13,7 +13,7 @@ defmodule Rabaq.Consumer do
 
   def init([connection, sub, out_pid, instance]) do
     :erlang.process_flag(:trap_exit, true)
-    {channel, ctag} = create_channel(connection, sub)
+    {channel, ctag} = Amqp.create_channel(connection, sub)
     state = ConsumerState.new.channel(channel).ctag(ctag).out_pid(out_pid)
     IO.puts("Starting consumer #{instance} with tag: #{ctag}")
     {:ok, state}
@@ -34,43 +34,31 @@ defmodule Rabaq.Consumer do
 
     cond do
       result == :ok ->
-        ack(state.channel, mtag)
+        Amqp.ack(state.channel, mtag)
       true ->
         IO.puts "Yeaaaah. This is not good. Outputter failed, nacking msg"
-        nack(state.channel, mtag)
+        Amqp.nack(state.channel, mtag)
     end
     {:noreply, state.msg_count(state.msg_count + 1)}
   end
 
   def handle_info({:"basic.cancel", _, _} = reason, state) do
-    close(state.channel, state.ctag)
+    Amqp.close_channel(state.channel, state.ctag)
     {:stop, reason, state}
   end
 
   def handle_info(info, state) do
     IO.puts "Stopping. Unknown message received:"
     IO.inspect info
-    close(state.channel, state.ctag)
+    Amqp.close_channel(state.channel, state.ctag)
     {:stop, info, state}
   end
 
-  def terminate(reason, state) do
-    IO.puts "Terminating consumer. Reason: #{reason}"
-    close(state.channel, state.ctag)
+  def terminate(_reason, state) do
+    IO.puts "Terminating consumer"
+    Amqp.close_channel(state.channel, state.ctag)
     :ok
   end
-
-  def close(channel, ctag) do
-    :"basic.cancel_ok" = :amqp_channel.call(
-      channel, :"basic.cancel".new.consumer_tag(ctag))
-    :ok = :amqp_channel.close(channel)
-  end
-
-  def create_channel(connection, sub) do
-    { :ok, channel } = :amqp_connection.open_channel connection
-    {:"basic.consume_ok", ctag} = :amqp_channel.subscribe(channel, sub, self)
-    {channel, ctag}
-    end
 
   def out(state, mtag, content) do
     cond do
@@ -80,15 +68,5 @@ defmodule Rabaq.Consumer do
       state.out_pid == nil ->
         :ok
     end
-  end
-
-  def ack(channel, mtag) do
-    :amqp_channel.cast(channel,
-      :"basic.ack".new.delivery_tag(mtag))
-  end
-
-  def nack(channel, mtag) do
-    :amqp_channel.cast(channel,
-      :"basic.nack".new.delivery_tag(mtag))
   end
 end

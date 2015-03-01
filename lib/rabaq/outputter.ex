@@ -3,10 +3,14 @@ defmodule Rabaq.Outputter do
     
   defrecord OutputterState,
     outdir: Path.expand("."),
-    count: 0,
+    file_count: 0,
     max: 10_000,
-    file: nil,
+    cache: nil,
     consumer_sup: nil
+
+  defrecord OutFile,
+    pid: nil,
+    count: 0
 
   def start_link(args) do
     :gen_server.start_link(__MODULE__, args, [])
@@ -14,8 +18,15 @@ defmodule Rabaq.Outputter do
 
   def init([max, outdir, count, [con, sub], spid]) do
     #:erlang.process_flag(:trap_exit, true)
+    cache = ConCache.start_link(
+      ttl_check: :timer.seconds(2),
+      ttl: :timer.minutes(10), # TODO: Should be configurable
+      touch_on_read: true,
+      callback: &cache_callback/1
+    )
+
     self <- {:start_consumer_supervisor, spid, count, [con, sub]}
-    {:ok, OutputterState.new.max(max).outdir(outdir)}
+    {:ok, OutputterState.new.max(max).outdir(outdir).cache(cache)}
   end
 
   def handle_info({:start_consumer_supervisor, spid, count, [con, sub]}, state) do
@@ -29,10 +40,12 @@ defmodule Rabaq.Outputter do
   end
 
   def handle_call({:amqp_msg, [_ctag, _mtag], payload}, _from, state) do
-    state = state.count(state.count + 1)
-    state = handle_file(state)
-    result = write_to_file(state.file, payload <> "\n")
-    {:reply, result, state}
+    {filename, outfile} = out_file(state, payload)
+    :ok = outfile.pid |> write_to_file payload <> "\n"
+
+    state = updated_state(state, filename,
+      outfile.count(outfile.count + 1)) #handle_file(state, payload)
+    {:reply, :ok, state}
   end
 
   def create_consumers(amount, connection, sub, opid) do
@@ -49,32 +62,54 @@ defmodule Rabaq.Outputter do
       [[connection, sub, opid, instance]], [id: instance])
   end
 
-  def terminate(_reason, state) do
-    File.close(state.file)
+  def terminate(_reason, _state) do
     :ok
   end
 
-  def handle_file(state) do
+  def out_file(state, _payload) do
     mode = [:append, :utf8]
+    filename = get_filename(state.file_count)
+    {filename, ConCache.get_or_store(state.cache, filename, fn() ->
+      Path.join(state.outdir, filename) |> File.open!(mode) |>
+        OutFile.new.pid
+      end)}
+  end
+
+  def updated_state(state, filename, outfile) do
     cond do
-      state.file == nil ->
-        Path.join(state.outdir, get_filename()) |>
-          File.open!(mode) |> state.file
-      state.count >= state.max ->
-        File.close(state.file)
-        Path.join(state.outdir, get_filename()) |>
-          File.open!(mode) |> state.count(0).file
+      outfile.count >= state.max ->
+        ConCache.delete(state.cache, filename)
+        state.file_count(state.file_count + 1)
       true ->
+        ConCache.update(state.cache, filename, fn(_old) ->
+          outfile
+        end)
         state
     end
   end
 
-  def get_filename() do
-    {{y,m,d}, {h,min,s}} = :calendar.local_time
-    "rabaq_#{y}-#{m}-#{d}_#{h}.#{min}.#{s}.rbq"
+  # TODO: Check for existing files, append number automatically
+  def get_filename(count) do
+    {{y,m,d}, {_h,_min,_s}} = :calendar.local_time
+    "out_#{y}-#{m}-#{d}_#{count}.rbq"
   end
 
   def write_to_file(filepid, payload) do
     IO.write(filepid, payload)
+  end
+
+  def cache_callback(info) do
+    case info do
+      {:delete, cache, key} ->
+        cache_expire(cache, key)
+      _ -> # update
+        :ok
+    end
+  end
+
+  def cache_expire(cache, key) do
+    outfile = ConCache.get(cache, key)
+    File.close(outfile.pid)
+    # TODO: Compress file if configured
   end
 end

@@ -16,6 +16,7 @@ defmodule Rabaq.Mixfile do
   # { :foobar, "~> 0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
     [{:amqp, "0.1.0"},
+    {:con_cache, "0.7.0"}
     ]
   end
 end
